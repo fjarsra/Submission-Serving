@@ -1,0 +1,30 @@
+artifact_path: file:D:/ASAH ML/Serving MOdel/mlruns/1/models/m-12a66854f0354503acc935b9998444c1/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.14.0
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+is_signature_from_type_hint: false
+mlflow_version: 3.8.0
+model_id: m-12a66854f0354503acc935b9998444c1
+model_size_bytes: 137023
+model_uuid: m-12a66854f0354503acc935b9998444c1
+prompts: null
+run_id: 454a3c68176d4232b4a32658928e4ae0
+signature:
+  inputs: '[{"type": "double", "name": "I_y", "required": true}, {"type": "double",
+    "name": "PF", "required": true}, {"type": "double", "name": "e_PF", "required":
+    true}, {"type": "double", "name": "d_if", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-12-23 19:08:48.334175'

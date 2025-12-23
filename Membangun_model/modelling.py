@@ -8,7 +8,8 @@ import mlflow.sklearn
 
 # 1. Load Data
 # GANTI path ini sesuai lokasi dataset lu
-df = pd.read_csv("SynchronousMachine_raw\SynchronousMachine.csv") 
+# Pakai garis miring biasa (/)
+df = pd.read_csv("SynchronousMachine_raw/SynchronousMachine.csv")
 
 # 2. Split Data (Sesuaikan nama kolom target lu)
 X = df.drop('I_f', axis=1) # Ganti 'I_f' dengan target prediksi lu
