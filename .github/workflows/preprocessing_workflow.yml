@@ -43,4 +43,4 @@ jobs:
     # Coba jalankan training sebentar untuk memastikan scriptnya jalan
     # Pastikan file 'modelling.py' dan 'data_sinkron.csv' ada di repo!
     - name: Run Training Test
-      run: python modelling.py
+      run: python Membangun_model/modelling.py
