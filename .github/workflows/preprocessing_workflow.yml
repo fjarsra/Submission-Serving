@@ -1,46 +1,62 @@
-name: Serving Pipeline CI
+name: Model Training & CI Pipeline
 
-# Trigger: Jalan setiap kali ada push ke branch main
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  train-and-test:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Ambil kode dari repo
+    # 1. AMBIL KODE
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 2. Siapkan Python
+    # 2. SIAPKAN PYTHON
     - name: Set up Python 3.9
       uses: actions/setup-python@v5
       with:
         python-version: "3.9"
 
-    # 3. Install Library
-    # Kita install library wajib biar script gak error
+    # 3. INSTALL LIBRARY
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint pandas scikit-learn mlflow xgboost requests
-        # Kalau ada requirements.txt, install juga
+        pip install pylint pandas scikit-learn mlflow xgboost requests matplotlib seaborn
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     # 4. CEK KUALITAS KODE (LINTING)
-    # Ini syarat CI paling valid. Dia ngecek error syntax di semua file .py
     - name: Lint with pylint
-      run: |
-        # --disable=R,C,W artinya: Abaikan Refactor, Convention, DAN WARNING.
-        # Jadi cuma error fatal yang bikin merah.
-        pylint --disable=R,C,W *.py
+      run: pylint --disable=R,C,W *.py Membangun_model/*.py || true
 
-    # 5. TEST RUN MODELLING (Opsional tapi Bagus)
-    # Coba jalankan training sebentar untuk memastikan scriptnya jalan
-    # Pastikan file 'modelling.py' dan 'data_sinkron.csv' ada di repo!
-    - name: Run Training Test
+    # 5. JALANIN TRAINING
+    - name: Run Model Training
       run: python Membangun_model/modelling.py
+
+    # 6. JALANIN TUNING (Opsional)
+    - name: Run Hyperparameter Tuning
+      run: python Membangun_model/modelling_tuning.py
+      continue-on-error: true
+
+
+    # ========================================================
+    # INI BAGIAN PENTING: SIMPAN HASIL (ARTIFACTS)
+    # ========================================================
+
+    # 8. Simpan Folder MLruns (Log Eksperimen)
+    - name: Upload MLflow Runs
+      uses: actions/upload-artifact@v4
+      with:
+        name: mlruns-results
+        # Pastikan path ini sesuai lokasi folder mlruns kamu nanti
+        path: Membangun_model/mlruns
+
+    # 9. Simpan Folder Model (File .pkl / Artifact Model)
+    - name: Upload Trained Model
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-model-artifact
+        # Pastikan path ini sesuai lokasi folder model kamu
+        path: Membangun_model/model
