@@ -40,11 +40,12 @@ def save_plot(fig, filename):
     mlflow.log_artifact(filepath)
 
 def main():
-    # Ganti nama eksperimen biar fresh dan gampang dicari
-    mlflow.set_experiment("Final_Submission_Fix_v2")
+    # Ganti nama Run biar tau ini yang terbaru
+    mlflow.set_experiment("Final_Submission_Jebolan_Anjing")
     
     X_train, y_train, X_test, y_test = load_data()
 
+    # Param grid dikit aja biar cepet
     param_grid = {
         'n_estimators': [100],
         'learning_rate': [0.1],
@@ -60,8 +61,8 @@ def main():
     best_model = grid_search.best_estimator_
     best_params = grid_search.best_params_
 
-    with mlflow.start_run(run_name="Best_Model_Final_Artifacts"):
-        print("🚀 Memulai Logging ke DagsHub...")
+    with mlflow.start_run(run_name="Best_Model_Force_Upload"):
+        print("🚀 Memulai Logging...")
         mlflow.log_params(best_params)
         
         y_pred = best_model.predict(X_test)
@@ -72,21 +73,35 @@ def main():
         mlflow.log_metric("rmse", rmse)
         mlflow.log_metric("mae", mae)
         mlflow.log_metric("r2_score", r2)
-        print("✅ Metrics Terkirim.")
 
-        # --- INI BAGIAN YANG DICARI REVIEWER ---
-        print("📦 Mengupload Model Folder (MLmodel, conda.yaml)...")
-        mlflow.xgboost.log_model(best_model, "model")
-        print("✅ Model Folder Terkirim!")
-        # ---------------------------------------
+        # ========================================================
+        # 🔥 BAGIAN SOLUSI PAKSA (FORCE UPLOAD) 🔥
+        # ========================================================
+        # Kita generate folder MLflow secara lokal dulu
+        local_mlflow_model = "temp_mlflow_model_folder"
+        
+        # Hapus kalo ada sisaan lama
+        if os.path.exists(local_mlflow_model):
+            shutil.rmtree(local_mlflow_model)
+            
+        print("💾 Generating MLmodel structure locally...")
+        # Ini yang bikin file MLmodel, conda.yaml, dll
+        mlflow.xgboost.save_model(best_model, local_mlflow_model)
+        
+        print("⬆️ Uploading folder 'model' secara paksa...")
+        # Kita upload FOLDERNYA langsung (dianggap artefak biasa)
+        # artifact_path="model" artinya nanti di DagsHub namanya jadi folder "model"
+        mlflow.log_artifacts(local_mlflow_model, artifact_path="model")
+        print("✅ Upload Sukses!")
+        # ========================================================
 
-        # Simpan Model Manual (Buat GitHub Artifact)
+        # Simpan Model Manual (Buat GitHub Artifact) - Tetep perlu buat backup
         model_dir = os.path.join(OUTPUT_DIR, "model")
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         best_model.save_model(os.path.join(model_dir, "xgboost_model.json"))
 
-        # Generate Artefak Gambar
+        # Generate Artefak Gambar (Ini mah udah sukses dari tadi)
         if hasattr(best_model, 'feature_importances_'):
             sorted_idx = best_model.feature_importances_.argsort()
             fig1 = plt.figure(figsize=(10, 6))
@@ -120,7 +135,7 @@ def main():
         save_plot(fig4, "residual_dist.png")
         plt.close(fig4)
 
-        print("✅ SELESAI! Semua artefak harusnya sudah ada.")
+        print("✅ DONE! Cek DagsHub sekarang.")
 
 if __name__ == "__main__":
     main()
