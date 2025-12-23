@@ -11,10 +11,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # ==============================================================================
 # KONFIGURASI
 # ==============================================================================
+# Pastikan ini link repo kamu
 DAGSHUB_URI = "https://dagshub.com/fjarsra/Eksperimen_SML_fjarsra.mlflow" 
 DATA_DIR = "Membangun_model/preprocessing/SynchronousMachine_preprocessing"
-
-# Lokasi penyimpanan Output Gambar agar rapi
 OUTPUT_DIR = "Membangun_model" 
 
 mlflow.set_tracking_uri(DAGSHUB_URI)
@@ -26,25 +25,25 @@ def load_data():
     else:
         current_dir = DATA_DIR
 
-    train = pd.read_csv(os.path.join(current_dir, "train.csv"))
-    test = pd.read_csv(os.path.join(current_dir, "test.csv"))
-    return train.drop(columns=['I_f']), train['I_f'], test.drop(columns=['I_f']), test['I_f']
+    try:
+        train = pd.read_csv(os.path.join(current_dir, "train.csv"))
+        test = pd.read_csv(os.path.join(current_dir, "test.csv"))
+        return train.drop(columns=['I_f']), train['I_f'], test.drop(columns=['I_f']), test['I_f']
+    except FileNotFoundError:
+        print(f"Dataset tidak ditemukan di {current_dir}")
+        raise
 
 def save_plot(fig, filename):
-    """Fungsi bantu untuk simpan plot ke lokal & upload ke MLflow"""
-    # 1. Simpan ke folder lokal (biar bisa di-push ke GitHub)
     filepath = os.path.join(OUTPUT_DIR, filename)
     fig.savefig(filepath)
     print(f"📷 Gambar disimpan: {filepath}")
-    
-    # 2. Upload ke MLflow (Syarat Advance)
     mlflow.log_artifact(filepath)
 
 def main():
-    mlflow.set_experiment("XGBoost_Advance_Submission")
+    mlflow.set_experiment("XGBoost_Advance_Metrics_Fix")
     X_train, y_train, X_test, y_test = load_data()
 
-    # Parameter Grid
+    # Param Grid
     param_grid = {
         'n_estimators': [100],
         'learning_rate': [0.1],
@@ -60,20 +59,32 @@ def main():
     best_model = grid_search.best_estimator_
     best_params = grid_search.best_params_
 
-    with mlflow.start_run(run_name="Best_Model_Advance"):
+    with mlflow.start_run(run_name="Best_Model_Complete_Metrics"):
         mlflow.log_params(best_params)
         y_pred = best_model.predict(X_test)
         
+        # --- INI BAGIAN YANG KEMARIN HILANG, SEKARANG UDAH ADA ---
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+        mae = mean_absolute_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        
+        print(f"Evaluasi -> RMSE: {rmse}, MAE: {mae}, R2: {r2}")
+        
+        # Log ke DagsHub
         mlflow.log_metric("rmse", rmse)
+        mlflow.log_metric("mae", mae)
+        mlflow.log_metric("r2_score", r2)
+        # ---------------------------------------------------------
+
         mlflow.xgboost.log_model(best_model, "model")
 
-        # --- SIMPAN MODEL MANUAL ---
+        # Simpan Model Manual
         model_dir = os.path.join(OUTPUT_DIR, "model")
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         best_model.save_model(os.path.join(model_dir, "xgboost_model.json"))
 
+        # Generate 4 Artefak
         # 1. Feature Importance
         if hasattr(best_model, 'feature_importances_'):
             sorted_idx = best_model.feature_importances_.argsort()
@@ -81,7 +92,7 @@ def main():
             plt.barh(X_train.columns[sorted_idx], best_model.feature_importances_[sorted_idx])
             plt.title("1. Feature Importance")
             plt.tight_layout()
-            save_plot(fig1, "feature_importance.png") # Panggil fungsi bantu
+            save_plot(fig1, "feature_importance.png")
             plt.close(fig1)
 
         # 2. Actual vs Predicted
@@ -116,7 +127,7 @@ def main():
         save_plot(fig4, "residual_dist.png")
         plt.close(fig4)
 
-        print("✅ Semua artefak gambar & model telah disimpan!")
+        print("✅ Semua metrics (RMSE, MAE, R2) dan artefak tersimpan!")
 
 if __name__ == "__main__":
     main()
