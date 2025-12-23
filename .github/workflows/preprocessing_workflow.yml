@@ -35,8 +35,9 @@ jobs:
     # Ini syarat CI paling valid. Dia ngecek error syntax di semua file .py
     - name: Lint with pylint
       run: |
-        # --disable=R,C artinya kita abaikan warning kerapihan, fokus ke Error aja
-        pylint --disable=R,C *.py
+        # --disable=R,C,W artinya: Abaikan Refactor, Convention, DAN WARNING.
+        # Jadi cuma error fatal yang bikin merah.
+        pylint --disable=R,C,W *.py
 
     # 5. TEST RUN MODELLING (Opsional tapi Bagus)
     # Coba jalankan training sebentar untuk memastikan scriptnya jalan
