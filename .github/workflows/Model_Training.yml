@@ -5,71 +5,69 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# 🔥 IZIN WAJIB: Biar bot bisa upload gambar ke repo
+permissions:
+  contents: write
+
 jobs:
   train-and-test:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. AMBIL KODE
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 2. SIAPKAN PYTHON
     - name: Set up Python 3.9
       uses: actions/setup-python@v5
       with:
         python-version: "3.9"
 
-    # 3. INSTALL LIBRARY
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pylint pandas scikit-learn mlflow xgboost requests matplotlib seaborn
-        # Install requirements dari root
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        # Install requirements dari dalam folder juga (jaga-jaga)
         if [ -f Membangun_model/requirements.txt ]; then pip install -r Membangun_model/requirements.txt; fi
 
-    # 4. CEK KUALITAS KODE (LINTING)
+    # Cek Kode (Opsional: Matikan Warning)
     - name: Lint with pylint
-      # Cek file di root dan di dalam folder
       run: pylint --disable=R,C,W *.py Membangun_model/*.py || true
 
-    # 5. JALANIN TRAINING
-    # Script ada di dalam folder Membangun_model
+    # Training Biasa
     - name: Run Model Training
       run: python Membangun_model/modelling.py
 
-    # 6. JALANIN TUNING (Opsional)
-    # Pastikan file ini SUDAH TIDAK PAKE DAGSHUB (Save lokal aja)
+    # 🔥 HYPERPARAMETER TUNING (YANG PENTING)
+    # Ini akan generate 4 gambar PNG di folder Membangun_model
     - name: Run Hyperparameter Tuning
-      # INI BAGIAN PENTINGNYA! Kita suntikkan username & password lewat Environment Variable
       env:
         MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
       run: python Membangun_model/modelling_tuning.py
       continue-on-error: true
 
-    # 7. JALANIN INFERENCE TEST
-    # Script inference.py ada di ROOT (luar)
     - name: Run Inference Test
       run: python inference.py
       continue-on-error: true
 
     # ========================================================
-    # SIMPAN HASIL (ARTIFACTS)
+    # 📸 BAGIAN BARU: PUSH GAMBAR PNG KE REPO
     # ========================================================
+    - name: Commit and Push Images
+      run: |
+        git config --global user.name 'GitHub Actions Bot'
+        git config --global user.email 'actions@github.com'
+        
+        # Tambahkan semua file PNG yang baru dibuat di folder Membangun_model
+        git add Membangun_model/*.png
+        
+        # Cek apakah ada perubahan, kalau ada baru di-commit
+        git commit -m "📊 Auto-update: Hyperparameter Tuning Plots [skip ci]" || echo "No changes to commit"
+        
+        # Push balik ke GitHub
+        git push
 
-    # 8. Simpan Folder MLruns (Log Eksperimen)
-    # Di screenshot, 'mlruns' ada di ROOT
-    - name: Upload MLflow Runs
-      uses: actions/upload-artifact@v4
-      with:
-        name: mlruns-results
-        path: mlruns
-
-    # 9. Simpan Folder Model
-    # Di screenshot, folder 'model' ada di dalam 'Membangun_model'
+    # Upload Artifact ZIP (Cadangan kalau mau download manual)
     - name: Upload Trained Model
       uses: actions/upload-artifact@v4
       with:
